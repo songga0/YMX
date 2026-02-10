@@ -1,0 +1,14 @@
+{% load static %}
+<header class="navbar-wrapper">
+  <nav class="navbar" role="navigation">
+    <div class="navbar-left">
+      <a href="/" class="navbar-brand">
+        <img src="{% static 'icons/JDG.png' %}" alt="JDG" class="navbar-logo">
+      </a>
+      <a href="/" class="navbar-link{% if request.path == '/' %} active{% endif %}">판단실</a>
+    </div>
+    <div class="navbar-right">
+      <img src="{% static 'icons/profile.png' %}" alt="프로필" class="navbar-icon">
+    </div>
+  </nav>
+</header>

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/theme.css' %}">
+</head>
+<body>
+
+  {% include "core/navbar.html" %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+</body>
+</html>

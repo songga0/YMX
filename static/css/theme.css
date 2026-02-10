@@ -1,0 +1,132 @@
+:root {
+    /* Brand */
+    --color-primary: #003480;
+    --color-primary-hover: #002a66;
+
+    /* Background */
+    --color-bg: #F6F6F6;
+
+    /* Text */
+    --color-black: #808080;
+    --color-text-muted: #555;
+
+    /* Navbar */
+    --navbar-height: 64px;
+    --navbar-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --color-nav-link: #6D6D6D;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+  }
+
+  /* ========== Navbar ========== */
+  .navbar-wrapper {
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    width: 100%;
+    background: var(--color-bg);
+    box-shadow: var(--navbar-shadow);
+  }
+
+  .navbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    height: var(--navbar-height);
+    width: 100%;
+  }
+
+  .navbar-left {
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+    height: 100%;
+  }
+
+  .navbar-right {
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  .navbar-icon {
+    height: 28px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+
+  .navbar-logo {
+    height: 38px;
+    width: auto;
+    display: block;
+    object-fit: contain;
+  }
+
+  .navbar-brand {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    text-decoration: none;
+    letter-spacing: -0.02em;
+  }
+
+  .navbar-brand:hover {
+    color: var(--color-primary-hover);
+  }
+
+  .navbar-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .navbar-menu li {
+    margin: 0;
+  }
+
+  .navbar-link {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 1rem;
+    color: var(--color-nav-link);
+    text-decoration: none;
+    font-size: 1.125rem;
+    font-weight: 500;
+    border-radius: 0;
+    transition: color 0.2s;
+    box-sizing: border-box;
+    border-bottom: 3px solid transparent;
+  }
+
+  .navbar-link:hover {
+    color: var(--color-black);
+  }
+
+  .navbar-link.active {
+    color: var(--color-black);
+    border-bottom-color: var(--color-primary);
+  }
+
+  /* Main content offset under fixed navbar */
+  main {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
