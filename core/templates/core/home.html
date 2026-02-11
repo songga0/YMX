@@ -1,5 +1,129 @@
 {% extends "core/base.html" %}
 {% block content %}
   <h1>판단실</h1>
-  <p>환영합니다.</p>
+  <h2>공고와 본인 이력을 입력해 보세요.
+    AI가 신청 가능 여부와 이유를 한 번에 정리해드립니다.</h2>
+
+  <div class="upload-section">
+    <div class="upload-bars">
+      <div class="file-bar">
+        <span class="file-bar-text" id="file-bar-announcement" title="">조건 안내문</span>
+        <label class="file-upload-btn">
+          <input type="file" name="files_announcement" multiple style="display: none;" id="input-announcement">
+          업로드
+        </label>
+      </div>
+      <div class="file-bar">
+        <span class="file-bar-text" id="file-bar-resume" title="">내 정보</span>
+        <label class="file-upload-btn">
+          <input type="file" name="files_resume" multiple style="display: none;" id="input-resume">
+          업로드
+        </label>
+      </div>
+    </div>
+    <div class="create-btn-wrap">
+      <button type="button" class="create-btn">생성</button>
+    </div>
+  </div>
+
+  <style>
+    .upload-section {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .upload-bars {
+      display: flex;
+      flex-direction: row;
+      gap: 0.75rem;
+    }
+    .file-bar {
+      flex: 1;
+      min-width: 0;
+      background: #EFEFEF;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 0.5rem 0.5rem 1rem;
+      gap: 0.75rem;
+    }
+    .file-bar-text {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.9rem;
+      color: #555;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding-right: 0.25rem;
+    }
+    .file-upload-btn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 1rem;
+      height: 2rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .file-upload-btn:hover {
+      background: #f5f5f5;
+    }
+    .create-btn-wrap {
+      margin-top: 1rem;
+      display: flex;
+      justify-content: center;
+    }
+    .create-btn {
+      width: 100%;
+      max-width: 100%;
+      height: 3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: #0043BD;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .create-btn:hover {
+      background: #003399;
+    }
+  </style>
+
+  <script>
+    (function() {
+      function formatNames(files) {
+        if (!files || files.length === 0) return '';
+        var names = [];
+        for (var i = 0; i < files.length; i++) names.push(files[i].name);
+        return names.join(', ');
+      }
+
+      function updateBar(inputId, barId, placeholder) {
+        var input = document.getElementById(inputId);
+        var bar = document.getElementById(barId);
+        if (!input || !bar) return;
+        var files = input.files;
+        var text = files.length === 0 ? placeholder : formatNames(files);
+        bar.textContent = text;
+        bar.title = text;
+      }
+
+      document.getElementById('input-announcement').addEventListener('change', function() {
+        updateBar('input-announcement', 'file-bar-announcement', '조건 안내문');
+      });
+      document.getElementById('input-resume').addEventListener('change', function() {
+        updateBar('input-resume', 'file-bar-resume', '내 정보');
+      });
+    })();
+  </script>
 {% endblock %}

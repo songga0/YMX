@@ -4,7 +4,7 @@
     --color-primary-hover: #002a66;
 
     /* Background */
-    --color-bg: #F6F6F6;
+    --color-bg: #fff;
 
     /* Text */
     --color-black: #808080;
@@ -129,4 +129,13 @@
     max-width: 1440px;
     margin: 0 auto;
     padding: 1.5rem;
+  }
+
+  /* ========== Page Typography ========== */
+  h2 {
+    font-size: 1.0625rem; /* ≈ 17px */
+    font-weight: 400;
+    line-height: 1.65;
+    color: var(--color-text-muted);
+    margin-top: 0.75rem;
   }
