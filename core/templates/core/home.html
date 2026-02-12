@@ -1,30 +1,46 @@
 {% extends "core/base.html" %}
 {% block content %}
   <h1>판단실</h1>
-  <h2>공고와 본인 이력을 입력해 보세요.
-    AI가 신청 가능 여부와 이유를 한 번에 정리해드립니다.</h2>
+  <h2>조건 안내문과 본인 이력을 "PDF" 파일로 입력하거나 "텍스트"로 입력해 보세요.
+    AI가 신청 가능 여부와 이유를 한 번에 정리해드립니다.<br>
+    한 번에 여러 개의 안내문과 이력을 업로드할 수 있습니다.</h2>
 
   <div class="upload-section">
     <div class="upload-bars">
-      <div class="file-bar">
-        <span class="file-bar-text" id="file-bar-announcement" title="">조건 안내문</span>
-        <label class="file-upload-btn">
-          <input type="file" name="files_announcement" multiple style="display: none;" id="input-announcement">
-          업로드
-        </label>
+      <div class="upload-col">
+        <div class="file-bar">
+          <span class="file-bar-text" id="file-bar-announcement" title="">조건 안내문</span>
+          <label class="file-upload-btn">
+            <input type="file" name="files_announcement" multiple style="display: none;" id="input-announcement">
+            업로드
+          </label>
+        </div>
+        <input type="text" class="text-input" name="text_announcement" placeholder="조건 안내문을 텍스트로 입력하세요" autocomplete="off">
       </div>
-      <div class="file-bar">
-        <span class="file-bar-text" id="file-bar-resume" title="">내 정보</span>
-        <label class="file-upload-btn">
-          <input type="file" name="files_resume" multiple style="display: none;" id="input-resume">
-          업로드
-        </label>
+      <div class="upload-col">
+        <div class="file-bar">
+          <span class="file-bar-text" id="file-bar-resume" title="">내 정보</span>
+          <label class="file-upload-btn">
+            <input type="file" name="files_resume" multiple style="display: none;" id="input-resume">
+            업로드
+          </label>
+        </div>
+        <input type="text" class="text-input" name="text_resume" placeholder="내 정보를 텍스트로 입력하세요" autocomplete="off">
       </div>
     </div>
     <div class="create-btn-wrap">
-      <button type="button" class="create-btn">생성</button>
+      <button type="button" class="create-btn" id="create-btn">생성</button>
     </div>
   </div>
+
+  <div id="loading-popup" class="popup-overlay" style="display: none;" aria-hidden="true">
+    <div class="popup-box">
+      <div class="popup-spinner"></div>
+      <p class="popup-message">분석 중...</p>
+    </div>
+  </div>
+
+  <div id="result-area" class="result-area" style="display: none;"></div>
 
   <style>
     .upload-section {
@@ -37,6 +53,13 @@
       display: flex;
       flex-direction: row;
       gap: 0.75rem;
+    }
+    .upload-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
     }
     .file-bar {
       flex: 1;
@@ -74,6 +97,24 @@
     .file-upload-btn:hover {
       background: #f5f5f5;
     }
+    .text-input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem 1rem;
+      height: 2.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      font-size: 0.9rem;
+      color: #333;
+    }
+    .text-input::placeholder {
+      color: #999;
+    }
+    .text-input:focus {
+      outline: none;
+      border-color: #0043BD;
+    }
     .create-btn-wrap {
       margin-top: 1rem;
       display: flex;
@@ -97,9 +138,52 @@
     .create-btn:hover {
       background: #003399;
     }
+
+    .popup-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .popup-box {
+      background: #fff;
+      border-radius: 8px;
+      padding: 2rem;
+      min-width: 200px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+    .popup-spinner {
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 1rem;
+      border: 3px solid #eee;
+      border-top-color: #0043BD;
+      border-radius: 50%;
+      animation: popup-spin 0.8s linear infinite;
+    }
+    @keyframes popup-spin {
+      to { transform: rotate(360deg); }
+    }
+    .popup-message {
+      margin: 0;
+      font-size: 1rem;
+      color: #333;
+    }
+    .result-area {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: #f9f9f9;
+      border-radius: 8px;
+      border: 1px solid #eee;
+    }
   </style>
 
   <script>
+    document.addEventListener('DOMContentLoaded', function() {
     (function() {
       function formatNames(files) {
         if (!files || files.length === 0) return '';
@@ -124,6 +208,118 @@
       document.getElementById('input-resume').addEventListener('change', function() {
         updateBar('input-resume', 'file-bar-resume', '내 정보');
       });
+
+      function getCsrfToken() {
+        var input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input && input.value) return input.value;
+        var match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1] : '';
+      }
+
+      function showLoading(show) {
+        var popup = document.getElementById('loading-popup');
+        if (popup) popup.style.display = show ? 'flex' : 'none';
+      }
+
+      function renderResult(data) {
+        var area = document.getElementById('result-area');
+        if (!area) return;
+        var html = [];
+        if (data.announcement_title) html.push('<p><strong>공지 제목:</strong> ' + escapeHtml(data.announcement_title) + '</p>');
+        if (data.deadline) html.push('<p><strong>신청 마감일:</strong> ' + escapeHtml(data.deadline) + '</p>');
+        if (data.submission_place) html.push('<p><strong>신청 제출처:</strong> ' + escapeHtml(data.submission_place) + '</p>');
+        if (data.basic_conditions && data.basic_conditions.length) {
+          html.push('<p><strong>기본 조건:</strong></p><ul>');
+          data.basic_conditions.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
+          html.push('</ul>');
+        }
+        if (data.preferred_conditions && data.preferred_conditions.length) {
+          html.push('<p><strong>우대 조건:</strong></p><ul>');
+          data.preferred_conditions.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
+          html.push('</ul>');
+        }
+        if (data.satisfied_conditions && data.satisfied_conditions.length) {
+          html.push('<p><strong>충족 조건:</strong></p><ul>');
+          data.satisfied_conditions.forEach(function(o) {
+            var c = (o && o.condition) ? o.condition : o;
+            var r = (o && o.reason) ? o.reason : '';
+            html.push('<li>' + escapeHtml(c) + (r ? ' — ' + escapeHtml(r) : '') + '</li>');
+          });
+          html.push('</ul>');
+        }
+        if (data.unsatisfied_conditions && data.unsatisfied_conditions.length) {
+          html.push('<p><strong>미충족 조건:</strong></p><ul>');
+          data.unsatisfied_conditions.forEach(function(o) {
+            var c = (o && o.condition) ? o.condition : o;
+            var r = (o && o.reason) ? o.reason : '';
+            html.push('<li>' + escapeHtml(c) + (r ? ' — ' + escapeHtml(r) : '') + '</li>');
+          });
+          html.push('</ul>');
+        }
+        if (data.action_recommendations && data.action_recommendations.length) {
+          html.push('<p><strong>행위 추천:</strong></p><ul>');
+          data.action_recommendations.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
+          html.push('</ul>');
+        }
+        if (data.human_review_items && data.human_review_items.length) {
+          html.push('<p><strong>추가 확인 사항:</strong></p><ul>');
+          data.human_review_items.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
+          html.push('</ul>');
+        }
+        if (data.summary) html.push('<p><strong>총 요약:</strong></p><p>' + escapeHtml(data.summary) + '</p>');
+        if (data.criteria_and_sources) html.push('<p><strong>판단 기준 및 출처:</strong></p><p>' + escapeHtml(data.criteria_and_sources) + '</p>');
+        area.innerHTML = html.length ? html.join('') : '<p>결과가 없습니다.</p>';
+        area.style.display = 'block';
+      }
+
+      function escapeHtml(s) {
+        if (typeof s !== 'string') return '';
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      var createBtn = document.getElementById('create-btn');
+      if (!createBtn) return;
+      createBtn.addEventListener('click', function() {
+        var infoEl = document.querySelector('input[name="text_announcement"]');
+        var personalEl = document.querySelector('input[name="text_resume"]');
+        var info = (infoEl && infoEl.value) ? infoEl.value.trim() : '';
+        var personal = (personalEl && personalEl.value) ? personalEl.value.trim() : '';
+
+        if (!info || !personal) {
+          alert('조건 안내문과 내 정보를 모두 텍스트로 입력해 주세요.');
+          return;
+        }
+
+        showLoading(true);
+        var csrfToken = getCsrfToken();
+        fetch('/api/analyze/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify({ info: info, personal: personal })
+        })
+        .then(function(res) {
+          if (res.ok) return res.json();
+          return res.text().then(function(text) {
+            var msg = res.status + ' ' + res.statusText;
+            try { var d = JSON.parse(text); if (d.error) msg = d.error; } catch(e) {}
+            throw new Error(msg);
+          });
+        })
+        .then(function(data) {
+          showLoading(false);
+          renderResult(data);
+        })
+        .catch(function(err) {
+          showLoading(false);
+          alert('오류: ' + (err.message || err));
+        });
+      });
     })();
+    });
   </script>
 {% endblock %}
