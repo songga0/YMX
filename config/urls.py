@@ -22,5 +22,6 @@ from core import views as core_views
 urlpatterns = [
     path('', core_views.home, name='home'),
     path('api/analyze/', core_views.analyze_text, name='api_analyze'),
+    path('api/reports/latest/', core_views.latest_reports, name='api_reports_latest'),
     path('admin/', admin.site.urls),
 ]

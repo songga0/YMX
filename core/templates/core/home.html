@@ -33,6 +33,10 @@
     </div>
   </div>
 
+  <h1 class="section-title-reports">최신 생성 리포트</h1>
+  <h2 class="section-desc-reports">최근 생성된 3개의 리포트가 표시됩니다.</h2>
+  <div id="report-list" class="report-list" aria-live="polite"></div>
+
   <div id="loading-popup" class="popup-overlay" style="display: none;" aria-hidden="true">
     <div class="popup-box">
       <div class="popup-spinner"></div>
@@ -138,6 +142,13 @@
     .create-btn:hover {
       background: #003399;
     }
+    .section-title-reports {
+      margin-top: 7rem;
+    }
+    .section-desc-reports {
+      margin-top: 0.5rem;
+      margin-bottom: 0;
+    }
 
     .popup-overlay {
       position: fixed;
@@ -180,10 +191,98 @@
       border-radius: 8px;
       border: 1px solid #eee;
     }
+    .report-list {
+      margin-top: 1rem;
+    }
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .report-table th,
+    .report-table td {
+      padding: 0.875rem 1.25rem;
+      border-bottom: 1px solid #e8e8e8;
+      vertical-align: middle;
+    }
+    .report-table th {
+      background: #EFEFEF;
+      color: #555;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .report-table th.no,
+    .report-table td.no {
+      width: 5rem;
+      min-width: 5rem;
+      text-align: center;
+    }
+    .report-table th.name,
+    .report-table td.name {
+      text-align: left;
+    }
+    .report-table th.created_at,
+    .report-table td.created_at {
+      width: 11rem;
+      min-width: 11rem;
+      text-align: right;
+      color: #555;
+      font-size: 0.9rem;
+    }
+    .report-table tbody tr:hover {
+      background: #f8f9fa;
+    }
+    .report-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .report-table a {
+      color: #0043BD;
+      text-decoration: none;
+    }
+    .report-table a:hover {
+      text-decoration: underline;
+    }
+    .report-list-empty {
+      color: #666;
+      padding: 1rem;
+      background: #f9f9f9;
+      border-radius: 6px;
+      border: 1px solid #eee;
+    }
   </style>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
+      (function loadReportList() {
+        var el = document.getElementById('report-list');
+        if (!el) return;
+        fetch('/api/reports/latest/')
+          .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+          .then(function(data) {
+            var reports = (data && data.reports) ? data.reports : [];
+            if (reports.length === 0) {
+              el.innerHTML = '<p class="report-list-empty">아직 생성된 리포트가 없습니다.</p>';
+              return;
+            }
+            var rows = reports.map(function(r) {
+              var name = (r.report_name || '이름 없음').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+              var createdAt = (r.created_at || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+              var nameCell = r.report_url
+                ? '<a href="' + (r.report_url || '').replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">' + name + '</a>'
+                : name;
+              return '<tr><td class="no">' + (r.no || '') + '</td><td class="name">' + nameCell + '</td><td class="created_at">' + createdAt + '</td></tr>';
+            }).join('');
+            el.innerHTML = '<table class="report-table"><thead><tr><th class="no">번호</th><th class="name">리포트명</th><th class="created_at">생성일시</th></tr></thead><tbody>' + rows + '</tbody></table>';
+          })
+          .catch(function() {
+            el.innerHTML = '<p class="report-list-empty">리포트 목록을 불러올 수 없습니다.</p>';
+          });
+      })();
+
     (function() {
       function formatNames(files) {
         if (!files || files.length === 0) return '';

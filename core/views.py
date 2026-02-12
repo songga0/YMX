@@ -5,9 +5,27 @@ from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
+from .models import Report
+
 
 def home(request):
     return render(request, "core/home.html")
+
+
+@require_http_methods(["GET"])
+def latest_reports(request):
+    """최근 생성된 3개 리포트 목록을 JSON으로 반환 (번호, 리포트명, 생성일시)."""
+    qs = Report.objects.order_by("-created_at")[:3]
+    reports = []
+    for i, r in enumerate(qs, start=1):
+        created = getattr(r, "created_at", None)
+        reports.append({
+            "no": i,
+            "report_name": r.report_name,
+            "report_url": r.report_url or "",
+            "created_at": created.strftime("%Y-%m-%d %H:%M") if created else "",
+        })
+    return JsonResponse({"reports": reports})
 
 
 @require_http_methods(["POST"])
@@ -49,7 +67,8 @@ def analyze_text(request):
   "criteria_and_sources": "판단 기준 및 출처 (줄글)"
 }
 
-정보가 없거나 해당 항목이 없으면 빈 문자열 또는 빈 배열로 두세요."""
+- criteria_and_sources 작성 시: 조건 안내문(기입된 자료)에서 인용한 구체적 조건/항목(예: ㅇㅇ조건, ㅇㅇ요건)과 개인정보에서 드러난 구체적 상황(예: ㅇㅇ 상황)을 짚은 뒤, 그 조건과 상황이 어떻게 적합한지 또는 부적합한지 방향을 명시하고, 그에 따른 판단/결론으로 이어지게 줄글로 작성하세요. 예시 느낌: "조건 안내문의 〇〇 요건과 개인정보의 △△ 상황이 ~하여 적합/부적합하므로 …"
+- 정보가 없거나 해당 항목이 없으면 빈 문자열 또는 빈 배열로 두세요."""
 
     user_prompt = f"""info (조건 안내문):
 {info}
