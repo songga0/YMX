@@ -5,3 +5,4 @@ whitenoise
 openai>=1.0
 django-storages[boto3]
 boto3
+weasyprint

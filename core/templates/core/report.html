@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  {% load static %}
+  <meta charset="utf-8">
+  <title>신청 조건 분석 리포트</title>
+</head>
+<body>
+<div class="report-page">
+  <header class="report-header">
+    {% if logo_data_url %}
+    <img src="{{ logo_data_url }}" alt="" class="report-logo">
+    {% else %}
+    <img src="{% static 'icons/JDG.png' %}" alt="로고" class="report-logo">
+    {% endif %}
+    <div class="report-header-text">
+      <h1 class="report-title">신청 조건 분석 리포트</h1>
+    </div>
+  </header>
+
+  <section class="report-section report-meta">
+    <h2 class="report-section-title"><img src="{% static 'icons/basic.png' %}" alt="" class="section-icon"> 기본 정보</h2>
+    <dl class="report-dl report-dl-horizontal">
+      {% if announcement_title %}
+      <dt>공지 제목</dt>
+      <dd>{{ announcement_title }}</dd>
+      {% endif %}
+      {% if deadline %}
+      <dt>신청 마감일</dt>
+      <dd>{{ deadline }}</dd>
+      {% endif %}
+      {% if submission_place %}
+      <dt>신청 제출처</dt>
+      <dd>{{ submission_place }}</dd>
+      {% endif %}
+    </dl>
+  </section>
+
+  {% if summary %}
+  <section class="report-section report-summary">
+    <h2 class="report-section-title"><img src="{% static 'icons/robot.png' %}" alt="" class="section-icon"> AI 요약</h2>
+    <p class="report-paragraph">{{ summary }}</p>
+  </section>
+  {% endif %}
+
+  {% if basic_conditions %}
+  <section class="report-section">
+    <h2 class="report-section-title"><img src="{% static 'icons/check.png' %}" alt="" class="section-icon"> 기본 조건</h2>
+    <ul class="report-list">
+      {% for item in basic_conditions %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if preferred_conditions %}
+  <section class="report-section">
+    <h2 class="report-section-title"><img src="{% static 'icons/check.png' %}" alt="" class="section-icon"> 우대 조건</h2>
+    <ul class="report-list">
+      {% for item in preferred_conditions %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if satisfied_conditions %}
+  <section class="report-section report-ok">
+    <h2 class="report-section-title"><img src="{% static 'icons/green light.png' %}" alt="" class="section-icon"> 충족 조건</h2>
+    <ul class="report-list report-condition-list">
+      {% for item in satisfied_conditions %}
+      <li>
+        <span class="condition-text">{{ item.condition|default:item }}</span>
+        {% if item.reason %}<span class="condition-reason">— {{ item.reason }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if unsatisfied_conditions %}
+  <section class="report-section report-ng">
+    <h2 class="report-section-title"><img src="{% static 'icons/red light.png' %}" alt="" class="section-icon"> 미충족 조건</h2>
+    <ul class="report-list report-condition-list">
+      {% for item in unsatisfied_conditions %}
+      <li>
+        <span class="condition-text">{{ item.condition|default:item }}</span>
+        {% if item.reason %}<span class="condition-reason">— {{ item.reason }}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if action_recommendations %}
+  <section class="report-section">
+    <h2 class="report-section-title"><img src="{% static 'icons/robot.png' %}" alt="" class="section-icon"> 행위 추천</h2>
+    <ul class="report-list">
+      {% for item in action_recommendations %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if human_review_items %}
+  <section class="report-section">
+    <h2 class="report-section-title"><img src="{% static 'icons/think.png' %}" alt="" class="section-icon"> 추가 확인 사항</h2>
+    <ul class="report-list">
+      {% for item in human_review_items %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% if criteria_and_sources %}
+  <section class="report-section report-criteria">
+    <h2 class="report-section-title"><img src="{% static 'icons/note.png' %}" alt="" class="section-icon"> 판단 기준 및 출처</h2>
+    <p class="report-paragraph">{{ criteria_and_sources }}</p>
+  </section>
+  {% endif %}
+
+  {% if not announcement_title and not summary and not basic_conditions %}
+  <p class="report-empty">표시할 내용이 없습니다.</p>
+  {% endif %}
+</div>
+
+<style>
+  /* PDF 한글 폰트: Docker에 fonts-noto-cjk 설치, fc-cache 후 시스템 폰트 사용 */
+  @font-face {
+    font-family: "Noto Sans CJK KR";
+    src: local("Noto Sans CJK KR"), local("Noto Sans CJK JP"), local("Noto Sans CJK");
+  }
+  body, .report-page {
+    font-family: "Noto Sans CJK KR", "Noto Sans CJK JP", "Noto Sans CJK", sans-serif;
+  }
+  .report-page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+  }
+  .report-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--color-primary, #003480);
+  }
+  .report-logo {
+    flex-shrink: 0;
+    height: 44px;
+    width: auto;
+    object-fit: contain;
+    display: block;
+  }
+  .report-header-text {
+    flex: 1;
+    min-width: 0;
+  }
+  .report-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.5rem;
+    color: var(--color-primary, #003480);
+  }
+  .report-subtitle {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text-muted, #555);
+  }
+  .report-section {
+    margin-bottom: 1.5rem;
+  }
+  .report-section-title {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #003480;
+    display: flex;
+    align-items: center;
+  }
+  .report-dl {
+    margin: 0;
+  }
+  .report-dl-horizontal {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.35rem 1.5rem;
+    align-items: baseline;
+  }
+  .report-dl-horizontal dt {
+    font-weight: bold;
+    color: #003480;
+  }
+  .report-dl-horizontal dd {
+    margin: 0;
+    color: #333;
+  }
+  .report-dl dt {
+    font-weight: bold;
+    color: #555;
+  }
+  .report-dl dd {
+    margin: 0;
+  }
+  .report-list {
+    margin: 0;
+    padding-left: 1.25rem;
+  }
+  .report-list li {
+    margin-bottom: 0.35rem;
+  }
+  .report-condition-list .condition-reason {
+    color: #555;
+  }
+  .report-ok .report-section-title { color: #003480; }
+  .report-ng .report-section-title { color: #a32b2b; }
+  .report-paragraph {
+    margin: 0;
+    line-height: 1.6;
+    color: #333;
+  }
+  .report-summary .report-paragraph { font-weight: 500; }
+  .report-empty {
+    color: #666;
+    font-style: italic;
+  }
+  .section-icon {
+    height: 1em;
+    width: auto;
+    margin-right: 0.25rem;
+    display: inline-block;
+  }
+</style>
+</body>
+</html>

@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
 {% block content %}
+  <div id="auth-state" data-authenticated="{% if request.user.is_authenticated %}true{% else %}false{% endif %}" aria-hidden="true" style="position:absolute;left:-9999px;"></div>
   <h1>판단실</h1>
   <h2>조건 안내문과 본인 이력을 "PDF" 파일로 입력하거나 "텍스트"로 입력해 보세요.
     AI가 신청 가능 여부와 이유를 한 번에 정리해드립니다.<br>
@@ -44,7 +45,67 @@
     </div>
   </div>
 
-  <div id="result-area" class="result-area" style="display: none;"></div>
+  <div id="pdf-viewer-modal" class="popup-overlay pdf-viewer-overlay" style="display: none;" aria-hidden="true" aria-label="PDF 뷰어">
+    <div class="pdf-viewer-box">
+      <button type="button" class="pdf-viewer-close" aria-label="닫기">&times;</button>
+      <iframe id="pdf-viewer-iframe" title="리포트 PDF" class="pdf-viewer-iframe"></iframe>
+    </div>
+  </div>
+
+  <!-- 로그인/회원가입 모달 (비로그인 시 생성 버튼 클릭 시 표시) -->
+  <div id="auth-modal" class="popup-overlay auth-modal-overlay" style="display: none;" aria-hidden="true" aria-label="로그인 또는 회원가입">
+    <div class="auth-modal-box">
+      <button type="button" class="auth-modal-close" aria-label="닫기">&times;</button>
+      <div id="auth-modal-login" class="auth-panel">
+        <h3 class="auth-modal-title">로그인</h3>
+        <form id="auth-login-form" class="auth-form" novalidate>
+          <div class="auth-field">
+            <label for="auth-login-username">아이디</label>
+            <input type="text" id="auth-login-username" name="username" autocomplete="username" required>
+          </div>
+          <div class="auth-field">
+            <label for="auth-login-password">비밀번호</label>
+            <input type="password" id="auth-login-password" name="password" autocomplete="current-password" required>
+          </div>
+          <p id="auth-login-error" class="auth-error" style="display: none;"></p>
+          <button type="submit" class="auth-submit-btn">로그인</button>
+        </form>
+        <p class="auth-switch">
+          계정이 없으신가요? <button type="button" class="auth-switch-btn" data-panel="register">회원가입</button>
+        </p>
+      </div>
+      <div id="auth-modal-register" class="auth-panel" style="display: none;">
+        <h3 class="auth-modal-title">회원가입</h3>
+        <form id="auth-register-form" class="auth-form" novalidate>
+          <div class="auth-field">
+            <label for="auth-register-username">아이디</label>
+            <input type="text" id="auth-register-username" name="username" autocomplete="username" required>
+          </div>
+          <div class="auth-field">
+            <label for="auth-register-password">비밀번호</label>
+            <input type="password" id="auth-register-password" name="password" autocomplete="new-password" required>
+          </div>
+          <div class="auth-field">
+            <label for="auth-register-password-confirm">비밀번호 확인</label>
+            <input type="password" id="auth-register-password-confirm" name="password_confirm" autocomplete="new-password" required>
+          </div>
+          <p id="auth-register-error" class="auth-error" style="display: none;"></p>
+          <button type="submit" class="auth-submit-btn">가입하기</button>
+        </form>
+        <p class="auth-switch">
+          이미 계정이 있으신가요? <button type="button" class="auth-switch-btn" data-panel="login">로그인</button>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 안내 문구 모달 (예쁜 안내용) -->
+  <div id="message-modal" class="popup-overlay message-modal-overlay" style="display: none;" aria-hidden="true" aria-label="안내">
+    <div class="message-modal-box">
+      <p class="message-modal-text" id="message-modal-text"></p>
+      <button type="button" class="message-modal-btn" id="message-modal-ok">확인</button>
+    </div>
+  </div>
 
   <style>
     .upload-section {
@@ -184,12 +245,44 @@
       font-size: 1rem;
       color: #333;
     }
-    .result-area {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      background: #f9f9f9;
+    .pdf-viewer-overlay {
+      padding: 1.5rem;
+    }
+    .pdf-viewer-box {
+      position: relative;
+      background: #fff;
       border-radius: 8px;
-      border: 1px solid #eee;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 920px;
+      height: 85vh;
+      max-height: 720px;
+      overflow: hidden;
+    }
+    .pdf-viewer-close {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      z-index: 10;
+      width: 2.25rem;
+      height: 2.25rem;
+      padding: 0;
+      border: none;
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+      font-size: 1.5rem;
+      line-height: 1;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .pdf-viewer-close:hover {
+      background: rgba(0, 0, 0, 0.7);
+    }
+    .pdf-viewer-iframe {
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: none;
     }
     .report-list {
       margin-top: 1rem;
@@ -253,15 +346,276 @@
       border-radius: 6px;
       border: 1px solid #eee;
     }
+
+    .auth-modal-overlay { padding: 1rem; }
+    .auth-modal-box {
+      position: relative;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 420px;
+      padding: 2rem;
+    }
+    .auth-modal-close {
+      position: absolute;
+      top: 0.75rem;
+      right: 0.75rem;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #666;
+      font-size: 1.5rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .auth-modal-close:hover { color: #000; }
+    .auth-modal-title {
+      margin: 0 0 1.25rem;
+      font-size: 1.25rem;
+      color: #333;
+    }
+    .auth-form { margin-bottom: 1rem; }
+    .auth-field {
+      margin-bottom: 1rem;
+    }
+    .auth-field label {
+      display: block;
+      margin-bottom: 0.35rem;
+      font-size: 0.9rem;
+      color: #555;
+    }
+    .auth-field input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.5rem 0.75rem;
+      height: 2.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 0.95rem;
+    }
+    .auth-field input:focus {
+      outline: none;
+      border-color: #0043BD;
+    }
+    .auth-error {
+      margin: 0 0 0.75rem;
+      font-size: 0.9rem;
+      color: #c00;
+    }
+    .auth-submit-btn {
+      width: 100%;
+      height: 2.75rem;
+      padding: 0;
+      border: none;
+      border-radius: 6px;
+      background: #0043BD;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .auth-submit-btn:hover { background: #003399; }
+    .auth-switch {
+      margin: 0;
+      font-size: 0.9rem;
+      color: #666;
+      text-align: center;
+    }
+    .auth-switch-btn {
+      margin-left: 0.25rem;
+      padding: 0;
+      border: none;
+      background: none;
+      color: #0043BD;
+      cursor: pointer;
+      font-size: inherit;
+      text-decoration: underline;
+    }
+    .auth-switch-btn:hover { color: #003399; }
+
+    .message-modal-overlay { padding: 1rem; }
+    .message-modal-box {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      padding: 1.75rem 2rem;
+      max-width: 420px;
+      text-align: center;
+    }
+    .message-modal-text {
+      margin: 0 0 1.5rem;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #444;
+    }
+    .message-modal-btn {
+      display: inline-block;
+      padding: 0.6rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      background: #0043BD;
+      color: #fff;
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+    .message-modal-btn:hover { background: #003399; }
   </style>
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      (function loadReportList() {
+      var authEl = document.getElementById('auth-state');
+      var isAuthenticated = authEl && authEl.getAttribute('data-authenticated') === 'true';
+      var pendingCreateAfterAuth = null;
+
+      function getCsrfToken() {
+        var input = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (input && input.value) return input.value;
+        var match = document.cookie.match(/csrftoken=([^;]+)/);
+        return match ? match[1].trim() : '';
+      }
+
+      function showAuthModal() {
+        var modal = document.getElementById('auth-modal');
+        if (modal) {
+          modal.style.display = 'flex';
+          modal.setAttribute('aria-hidden', 'false');
+          showAuthPanel('login');
+          document.getElementById('auth-login-error').style.display = 'none';
+          document.getElementById('auth-register-error').style.display = 'none';
+        }
+      }
+      function hideAuthModal() {
+        var modal = document.getElementById('auth-modal');
+        if (modal) {
+          modal.style.display = 'none';
+          modal.setAttribute('aria-hidden', 'true');
+        }
+      }
+      function showAuthPanel(panel) {
+        var loginEl = document.getElementById('auth-modal-login');
+        var registerEl = document.getElementById('auth-modal-register');
+        if (panel === 'register') {
+          if (loginEl) loginEl.style.display = 'none';
+          if (registerEl) registerEl.style.display = 'block';
+        } else {
+          if (loginEl) loginEl.style.display = 'block';
+          if (registerEl) registerEl.style.display = 'none';
+        }
+      }
+      function setLoginError(msg) {
+        var el = document.getElementById('auth-login-error');
+        if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+      }
+      function setRegisterError(msg) {
+        var el = document.getElementById('auth-register-error');
+        if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+      }
+
+      function showMessageModal(msg) {
+        var modal = document.getElementById('message-modal');
+        var textEl = document.getElementById('message-modal-text');
+        if (modal && textEl) {
+          textEl.textContent = msg || '';
+          modal.style.display = 'flex';
+          modal.setAttribute('aria-hidden', 'false');
+        }
+      }
+      function hideMessageModal() {
+        var modal = document.getElementById('message-modal');
+        if (modal) {
+          modal.style.display = 'none';
+          modal.setAttribute('aria-hidden', 'true');
+        }
+      }
+      var messageModal = document.getElementById('message-modal');
+      if (messageModal) {
+        document.getElementById('message-modal-ok').addEventListener('click', hideMessageModal);
+        messageModal.addEventListener('click', function(e) {
+          if (e.target === messageModal) hideMessageModal();
+        });
+      }
+
+      document.querySelectorAll('.auth-switch-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var panel = btn.getAttribute('data-panel');
+          showAuthPanel(panel || 'login');
+          setLoginError('');
+          setRegisterError('');
+        });
+      });
+      var authModal = document.getElementById('auth-modal');
+      if (authModal) {
+        var authClose = authModal.querySelector('.auth-modal-close');
+        if (authClose) authClose.addEventListener('click', hideAuthModal);
+        authModal.addEventListener('click', function(e) {
+          if (e.target === authModal) hideAuthModal();
+        });
+      }
+      var loginTrigger = document.getElementById('navbar-login-trigger');
+      if (loginTrigger) loginTrigger.addEventListener('click', showAuthModal);
+      document.getElementById('auth-login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var username = (document.getElementById('auth-login-username').value || '').trim();
+        var password = document.getElementById('auth-login-password').value || '';
+        setLoginError('');
+        if (!username || !password) {
+          setLoginError('아이디와 비밀번호를 입력해 주세요.');
+          return;
+        }
+        fetch('/api/auth/login/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          body: JSON.stringify({ username: username, password: password }),
+          credentials: 'same-origin'
+        })
+          .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+          .then(function(res) {
+            if (res.ok) {
+              hideAuthModal();
+              location.reload();
+            } else {
+              setLoginError(res.data.error || '로그인에 실패했습니다.');
+            }
+          })
+          .catch(function() { setLoginError('로그인 요청 중 오류가 발생했습니다.'); });
+      });
+      document.getElementById('auth-register-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var username = (document.getElementById('auth-register-username').value || '').trim();
+        var password = document.getElementById('auth-register-password').value || '';
+        var passwordConfirm = document.getElementById('auth-register-password-confirm').value || '';
+        setRegisterError('');
+        if (!username) { setRegisterError('아이디를 입력해 주세요.'); return; }
+        if (!password) { setRegisterError('비밀번호를 입력해 주세요.'); return; }
+        if (password !== passwordConfirm) { setRegisterError('비밀번호가 일치하지 않습니다.'); return; }
+        fetch('/api/auth/register/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          body: JSON.stringify({ username: username, password: password, password_confirm: passwordConfirm }),
+          credentials: 'same-origin'
+        })
+          .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+          .then(function(res) {
+            if (res.ok) {
+              hideAuthModal();
+              location.reload();
+            } else {
+              setRegisterError(res.data.error || '회원가입에 실패했습니다.');
+            }
+          })
+          .catch(function() { setRegisterError('회원가입 요청 중 오류가 발생했습니다.'); });
+      });
+
+      function refreshReportList() {
         var el = document.getElementById('report-list');
         if (!el) return;
-        fetch('/api/reports/latest/')
-          .then(function(r) { return r.ok ? r.json() : Promise.reject(); })
+        fetch('/api/reports/latest/?t=' + Date.now(), {
+          credentials: 'same-origin',
+          cache: 'no-store'
+        })
+          .then(function(r) { return r.ok ? r.json() : Promise.reject(new Error(r.status)); })
           .then(function(data) {
             var reports = (data && data.reports) ? data.reports : [];
             if (reports.length === 0) {
@@ -271,8 +625,9 @@
             var rows = reports.map(function(r) {
               var name = (r.report_name || '이름 없음').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
               var createdAt = (r.created_at || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-              var nameCell = r.report_url
-                ? '<a href="' + (r.report_url || '').replace(/"/g, '&quot;') + '" target="_blank" rel="noopener">' + name + '</a>'
+              var reportId = (r.id != null) ? parseInt(r.id, 10) : null;
+              var nameCell = reportId
+                ? '<a href="/report/file/' + reportId + '/" class="report-list-link">' + name + '</a>'
                 : name;
               return '<tr><td class="no">' + (r.no || '') + '</td><td class="name">' + nameCell + '</td><td class="created_at">' + createdAt + '</td></tr>';
             }).join('');
@@ -281,7 +636,44 @@
           .catch(function() {
             el.innerHTML = '<p class="report-list-empty">리포트 목록을 불러올 수 없습니다.</p>';
           });
-      })();
+      }
+      refreshReportList();
+
+      var reportListEl = document.getElementById('report-list');
+      if (reportListEl) {
+        reportListEl.addEventListener('click', function(e) {
+          var link = e.target && e.target.closest('a.report-list-link');
+          if (!link) return;
+          e.preventDefault();
+          var iframe = document.getElementById('pdf-viewer-iframe');
+          var modal = document.getElementById('pdf-viewer-modal');
+          if (iframe && modal) {
+            iframe.src = link.getAttribute('href') || link.href;
+            modal.style.display = 'flex';
+            modal.setAttribute('aria-hidden', 'false');
+          }
+        });
+      }
+      var pdfModal = document.getElementById('pdf-viewer-modal');
+      if (pdfModal) {
+        var closeBtn = pdfModal.querySelector('.pdf-viewer-close');
+        if (closeBtn) {
+          closeBtn.addEventListener('click', function() {
+            pdfModal.style.display = 'none';
+            pdfModal.setAttribute('aria-hidden', 'true');
+            var ifr = document.getElementById('pdf-viewer-iframe');
+            if (ifr) ifr.src = '';
+          });
+        }
+        pdfModal.addEventListener('click', function(e) {
+          if (e.target === pdfModal) {
+            pdfModal.style.display = 'none';
+            pdfModal.setAttribute('aria-hidden', 'true');
+            var ifr = document.getElementById('pdf-viewer-iframe');
+            if (ifr) ifr.src = '';
+          }
+        });
+      }
 
     (function() {
       function formatNames(files) {
@@ -308,98 +700,21 @@
         updateBar('input-resume', 'file-bar-resume', '내 정보');
       });
 
-      function getCsrfToken() {
-        var input = document.querySelector('[name=csrfmiddlewaretoken]');
-        if (input && input.value) return input.value;
-        var match = document.cookie.match(/csrftoken=([^;]+)/);
-        return match ? match[1] : '';
-      }
-
       function showLoading(show) {
         var popup = document.getElementById('loading-popup');
         if (popup) popup.style.display = show ? 'flex' : 'none';
       }
 
-      function renderResult(data) {
-        var area = document.getElementById('result-area');
-        if (!area) return;
-        var html = [];
-        if (data.announcement_title) html.push('<p><strong>공지 제목:</strong> ' + escapeHtml(data.announcement_title) + '</p>');
-        if (data.deadline) html.push('<p><strong>신청 마감일:</strong> ' + escapeHtml(data.deadline) + '</p>');
-        if (data.submission_place) html.push('<p><strong>신청 제출처:</strong> ' + escapeHtml(data.submission_place) + '</p>');
-        if (data.basic_conditions && data.basic_conditions.length) {
-          html.push('<p><strong>기본 조건:</strong></p><ul>');
-          data.basic_conditions.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
-          html.push('</ul>');
-        }
-        if (data.preferred_conditions && data.preferred_conditions.length) {
-          html.push('<p><strong>우대 조건:</strong></p><ul>');
-          data.preferred_conditions.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
-          html.push('</ul>');
-        }
-        if (data.satisfied_conditions && data.satisfied_conditions.length) {
-          html.push('<p><strong>충족 조건:</strong></p><ul>');
-          data.satisfied_conditions.forEach(function(o) {
-            var c = (o && o.condition) ? o.condition : o;
-            var r = (o && o.reason) ? o.reason : '';
-            html.push('<li>' + escapeHtml(c) + (r ? ' — ' + escapeHtml(r) : '') + '</li>');
-          });
-          html.push('</ul>');
-        }
-        if (data.unsatisfied_conditions && data.unsatisfied_conditions.length) {
-          html.push('<p><strong>미충족 조건:</strong></p><ul>');
-          data.unsatisfied_conditions.forEach(function(o) {
-            var c = (o && o.condition) ? o.condition : o;
-            var r = (o && o.reason) ? o.reason : '';
-            html.push('<li>' + escapeHtml(c) + (r ? ' — ' + escapeHtml(r) : '') + '</li>');
-          });
-          html.push('</ul>');
-        }
-        if (data.action_recommendations && data.action_recommendations.length) {
-          html.push('<p><strong>행위 추천:</strong></p><ul>');
-          data.action_recommendations.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
-          html.push('</ul>');
-        }
-        if (data.human_review_items && data.human_review_items.length) {
-          html.push('<p><strong>추가 확인 사항:</strong></p><ul>');
-          data.human_review_items.forEach(function(c) { html.push('<li>' + escapeHtml(c) + '</li>'); });
-          html.push('</ul>');
-        }
-        if (data.summary) html.push('<p><strong>총 요약:</strong></p><p>' + escapeHtml(data.summary) + '</p>');
-        if (data.criteria_and_sources) html.push('<p><strong>판단 기준 및 출처:</strong></p><p>' + escapeHtml(data.criteria_and_sources) + '</p>');
-        area.innerHTML = html.length ? html.join('') : '<p>결과가 없습니다.</p>';
-        area.style.display = 'block';
-      }
-
-      function escapeHtml(s) {
-        if (typeof s !== 'string') return '';
-        var div = document.createElement('div');
-        div.textContent = s;
-        return div.innerHTML;
-      }
-
-      var createBtn = document.getElementById('create-btn');
-      if (!createBtn) return;
-      createBtn.addEventListener('click', function() {
-        var infoEl = document.querySelector('input[name="text_announcement"]');
-        var personalEl = document.querySelector('input[name="text_resume"]');
-        var info = (infoEl && infoEl.value) ? infoEl.value.trim() : '';
-        var personal = (personalEl && personalEl.value) ? personalEl.value.trim() : '';
-
-        if (!info || !personal) {
-          alert('조건 안내문과 내 정보를 모두 텍스트로 입력해 주세요.');
-          return;
-        }
-
+      function doAnalyze(info, personal) {
         showLoading(true);
-        var csrfToken = getCsrfToken();
         fetch('/api/analyze/', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
+            'X-CSRFToken': getCsrfToken()
           },
-          body: JSON.stringify({ info: info, personal: personal })
+          body: JSON.stringify({ info: info, personal: personal }),
+          credentials: 'same-origin'
         })
         .then(function(res) {
           if (res.ok) return res.json();
@@ -411,13 +726,37 @@
         })
         .then(function(data) {
           showLoading(false);
-          renderResult(data);
+          setTimeout(function() { refreshReportList(); }, 0);
         })
         .catch(function(err) {
           showLoading(false);
           alert('오류: ' + (err.message || err));
+          setTimeout(function() { refreshReportList(); }, 0);
         });
-      });
+      }
+
+      var createBtn = document.getElementById('create-btn');
+      if (createBtn) {
+        createBtn.addEventListener('click', function() {
+          var infoEl = document.querySelector('input[name="text_announcement"]');
+          var personalEl = document.querySelector('input[name="text_resume"]');
+          var info = (infoEl && infoEl.value) ? infoEl.value.trim() : '';
+          var personal = (personalEl && personalEl.value) ? personalEl.value.trim() : '';
+
+          if (!isAuthenticated) {
+            pendingCreateAfterAuth = (info && personal) ? { info: info, personal: personal } : null;
+            showAuthModal();
+            return;
+          }
+
+          if (!info || !personal) {
+            showMessageModal('조건 안내문과 내 정보를 모두 입력해 주세요.');
+            return;
+          }
+
+          doAnalyze(info, personal);
+        });
+      }
     })();
     });
   </script>

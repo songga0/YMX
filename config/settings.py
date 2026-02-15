@@ -136,6 +136,8 @@ AWS_S3_ENDPOINT_URL = os.getenv("AWS_S3_ENDPOINT_URL", "http://minio:9000")
 AWS_S3_USE_SSL = False
 AWS_S3_REGION_NAME = "us-east-1"
 AWS_S3_FILE_OVERWRITE = False
+# MinIO는 path style 주소 사용
+AWS_S3_ADDRESSING_STYLE = "path"
 
 STORAGES = {
     "default": {

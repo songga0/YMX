@@ -12,5 +12,187 @@
     {% block content %}{% endblock %}
   </main>
 
+  {% if request.user.is_authenticated %}
+  <!-- 사용자 정보 수정 모달 -->
+  <div id="profile-modal" class="popup-overlay profile-modal-overlay" style="display: none;" aria-hidden="true" aria-label="사용자 정보 수정">
+    <div class="profile-modal-box">
+      <button type="button" class="profile-modal-close" aria-label="닫기">&times;</button>
+      <h3 class="profile-modal-title">사용자 정보 수정</h3>
+      <form id="profile-form" class="profile-form">
+        <div class="profile-field">
+          <label for="profile-username">아이디</label>
+          <input type="text" id="profile-username" name="username" autocomplete="username">
+        </div>
+        <p class="profile-section-label">비밀번호 변경 (변경 시에만 입력)</p>
+        <div class="profile-field">
+          <label for="profile-current-password">현재 비밀번호</label>
+          <input type="password" id="profile-current-password" name="current_password" autocomplete="current-password">
+        </div>
+        <div class="profile-field">
+          <label for="profile-new-password">새 비밀번호</label>
+          <input type="password" id="profile-new-password" name="new_password" autocomplete="new-password">
+        </div>
+        <div class="profile-field">
+          <label for="profile-new-password-confirm">새 비밀번호 확인</label>
+          <input type="password" id="profile-new-password-confirm" name="new_password_confirm" autocomplete="new-password">
+        </div>
+        <p id="profile-form-error" class="profile-error" style="display: none;"></p>
+        <button type="submit" class="profile-submit-btn">저장</button>
+      </form>
+    </div>
+  </div>
+  <!-- 탈퇴 확인 모달 -->
+  <div id="withdraw-modal" class="popup-overlay profile-modal-overlay" style="display: none;" aria-hidden="true" aria-label="회원 탈퇴">
+    <div class="profile-modal-box">
+      <button type="button" class="withdraw-modal-close" aria-label="닫기">&times;</button>
+      <h3 class="profile-modal-title">회원 탈퇴</h3>
+      <p class="withdraw-warning">탈퇴하면 모든 데이터가 삭제되며 복구할 수 없습니다. 비밀번호를 입력한 뒤 확인해 주세요.</p>
+      <form id="withdraw-form" class="profile-form">
+        <div class="profile-field">
+          <label for="withdraw-password">비밀번호</label>
+          <input type="password" id="withdraw-password" name="password" autocomplete="current-password" placeholder="비밀번호 입력">
+        </div>
+        <p id="withdraw-form-error" class="profile-error" style="display: none;"></p>
+        <div class="withdraw-actions">
+          <button type="button" class="withdraw-cancel-btn" id="withdraw-cancel">취소</button>
+          <button type="submit" class="withdraw-submit-btn">탈퇴하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <style>
+    .profile-modal-overlay { padding: 1rem; }
+    .profile-modal-box { position: relative; background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); width: 100%; max-width: 420px; padding: 1.5rem 2rem; }
+    .profile-modal-close, .withdraw-modal-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 2rem; height: 2rem; padding: 0; border: none; background: none; color: #666; font-size: 1.5rem; line-height: 1; cursor: pointer; }
+    .profile-modal-close:hover, .withdraw-modal-close:hover { color: #000; }
+    .profile-modal-title { margin: 0 0 1rem; font-size: 1.25rem; color: #333; }
+    .profile-section-label { margin: 0.75rem 0 0.35rem; font-size: 0.9rem; color: #555; }
+    .profile-field { margin-bottom: 0.75rem; }
+    .profile-field label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; color: #555; }
+    .profile-field input { width: 100%; box-sizing: border-box; padding: 0.45rem 0.75rem; height: 2.35rem; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95rem; }
+    .profile-field input:focus { outline: none; border-color: #0043BD; }
+    .profile-error { margin: 0 0 0.5rem; font-size: 0.9rem; color: #c00; }
+    .profile-submit-btn { width: 100%; height: 2.5rem; margin-top: 0.25rem; border: none; border-radius: 8px; background: #0043BD; color: #fff; font-size: 0.95rem; cursor: pointer; }
+    .profile-submit-btn:hover { background: #003399; }
+    .withdraw-warning { margin: 0 0 0.75rem; font-size: 0.9rem; color: #555; line-height: 1.5; }
+    .withdraw-actions { display: flex; gap: 0.75rem; margin-top: 0.75rem; }
+    .withdraw-cancel-btn { flex: 1; height: 2.5rem; border: 1px solid #ccc; border-radius: 8px; background: #fff; font-size: 0.95rem; cursor: pointer; }
+    .withdraw-submit-btn { flex: 1; height: 2.5rem; border: none; border-radius: 8px; background: #c00; color: #fff; font-size: 0.95rem; cursor: pointer; }
+    .withdraw-submit-btn:hover { background: #a00; }
+  </style>
+  <script>
+  (function() {
+    function getCsrfToken() {
+      var m = document.cookie.match(/csrftoken=([^;]+)/);
+      return m ? m[1].trim() : '';
+    }
+    var trigger = document.getElementById('navbar-profile-trigger');
+    var menu = document.getElementById('navbar-user-menu');
+    if (trigger && menu) {
+      trigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var open = menu.classList.toggle('is-open');
+        trigger.setAttribute('aria-expanded', open);
+        menu.setAttribute('aria-hidden', !open);
+      });
+      document.addEventListener('click', function() {
+        menu.classList.remove('is-open');
+        trigger.setAttribute('aria-expanded', 'false');
+        menu.setAttribute('aria-hidden', 'true');
+      });
+      menu.addEventListener('click', function(e) { e.stopPropagation(); });
+      menu.querySelectorAll('.navbar-dropdown-item').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var action = btn.getAttribute('data-action');
+          menu.classList.remove('is-open');
+          trigger.setAttribute('aria-expanded', 'false');
+          menu.setAttribute('aria-hidden', 'true');
+          if (action === 'profile') {
+            document.getElementById('profile-modal').style.display = 'flex';
+            document.getElementById('profile-modal').setAttribute('aria-hidden', 'false');
+            document.getElementById('profile-form-error').style.display = 'none';
+            fetch('/api/auth/me/', { credentials: 'same-origin' })
+              .then(function(r) { return r.json(); })
+              .then(function(d) {
+                if (d.username) document.getElementById('profile-username').value = d.username;
+              })
+              .catch(function() {});
+          } else if (action === 'logout') {
+            fetch('/api/auth/logout/', { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' }, credentials: 'same-origin', body: '{}' })
+              .then(function() { location.reload(); });
+          } else if (action === 'withdraw') {
+            document.getElementById('withdraw-password').value = '';
+            document.getElementById('withdraw-form-error').style.display = 'none';
+            document.getElementById('withdraw-modal').style.display = 'flex';
+            document.getElementById('withdraw-modal').setAttribute('aria-hidden', 'false');
+          }
+        });
+      });
+    }
+    var profileModal = document.getElementById('profile-modal');
+    if (profileModal) {
+      profileModal.querySelector('.profile-modal-close').addEventListener('click', function() { profileModal.style.display = 'none'; profileModal.setAttribute('aria-hidden', 'true'); });
+      profileModal.addEventListener('click', function(e) { if (e.target === profileModal) { profileModal.style.display = 'none'; profileModal.setAttribute('aria-hidden', 'true'); } });
+      document.getElementById('profile-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var errEl = document.getElementById('profile-form-error');
+        errEl.style.display = 'none';
+        var payload = {
+          username: document.getElementById('profile-username').value.trim(),
+          current_password: document.getElementById('profile-current-password').value,
+          new_password: document.getElementById('profile-new-password').value,
+          new_password_confirm: document.getElementById('profile-new-password-confirm').value
+        };
+        fetch('/api/auth/profile/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          credentials: 'same-origin',
+          body: JSON.stringify(payload)
+        })
+          .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+          .then(function(res) {
+            if (res.ok) {
+              profileModal.style.display = 'none';
+              profileModal.setAttribute('aria-hidden', 'true');
+            } else {
+              errEl.textContent = res.data.error || '저장에 실패했습니다.';
+              errEl.style.display = 'block';
+            }
+          })
+          .catch(function() { errEl.textContent = '요청 중 오류가 발생했습니다.'; errEl.style.display = 'block'; });
+      });
+    }
+    var withdrawModal = document.getElementById('withdraw-modal');
+    if (withdrawModal) {
+      withdrawModal.querySelector('.withdraw-modal-close').addEventListener('click', function() { withdrawModal.style.display = 'none'; withdrawModal.setAttribute('aria-hidden', 'true'); });
+      document.getElementById('withdraw-cancel').addEventListener('click', function() { withdrawModal.style.display = 'none'; withdrawModal.setAttribute('aria-hidden', 'true'); });
+      withdrawModal.addEventListener('click', function(e) { if (e.target === withdrawModal) { withdrawModal.style.display = 'none'; withdrawModal.setAttribute('aria-hidden', 'true'); } });
+      document.getElementById('withdraw-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        var errEl = document.getElementById('withdraw-form-error');
+        errEl.style.display = 'none';
+        var password = document.getElementById('withdraw-password').value;
+        fetch('/api/auth/withdraw/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+          credentials: 'same-origin',
+          body: JSON.stringify({ password: password })
+        })
+          .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+          .then(function(res) {
+            if (res.ok) {
+              location.reload();
+            } else {
+              errEl.textContent = res.data.error || '탈퇴 처리에 실패했습니다.';
+              errEl.style.display = 'block';
+            }
+          })
+          .catch(function() { errEl.textContent = '요청 중 오류가 발생했습니다.'; errEl.style.display = 'block'; });
+      });
+    }
+  })();
+  </script>
+  {% endif %}
+
 </body>
 </html>
