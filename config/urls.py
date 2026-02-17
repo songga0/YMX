@@ -22,6 +22,7 @@ from core import views as core_views
 urlpatterns = [
     path('', core_views.home, name='home'),
     path('api/analyze/', core_views.analyze_text, name='api_analyze'),
+    path('api/analyze/file/', core_views.analyze_file, name='api_analyze_file'),
     path('api/reports/latest/', core_views.latest_reports, name='api_reports_latest'),
     path('api/auth/login/', core_views.auth_login_api, name='api_auth_login'),
     path('api/auth/register/', core_views.auth_register_api, name='api_auth_register'),

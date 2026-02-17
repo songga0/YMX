@@ -14,6 +14,10 @@ RUN apt-get update && apt-get install -y \
     shared-mime-info \
     fontconfig \
     fonts-noto-cjk \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-kor \
+    lsb-release \
  && fc-cache -fv \
  && rm -rf /var/lib/apt/lists/*
 

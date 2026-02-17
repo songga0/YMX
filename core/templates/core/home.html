@@ -574,7 +574,15 @@
           .then(function(res) {
             if (res.ok) {
               hideAuthModal();
-              location.reload();
+              if (pendingCreateAfterAuth === true) {
+                pendingCreateAfterAuth = null;
+                setTimeout(function() {
+                  var createBtn = document.getElementById('create-btn');
+                  if (createBtn) createBtn.click();
+                }, 100);
+              } else {
+                location.reload();
+              }
             } else {
               setLoginError(res.data.error || '로그인에 실패했습니다.');
             }
@@ -600,7 +608,15 @@
           .then(function(res) {
             if (res.ok) {
               hideAuthModal();
-              location.reload();
+              if (pendingCreateAfterAuth === true) {
+                pendingCreateAfterAuth = null;
+                setTimeout(function() {
+                  var createBtn = document.getElementById('create-btn');
+                  if (createBtn) createBtn.click();
+                }, 100);
+              } else {
+                location.reload();
+              }
             } else {
               setRegisterError(res.data.error || '회원가입에 실패했습니다.');
             }
@@ -735,26 +751,119 @@
         });
       }
 
+      function doAnalyzeFile(announcementFiles, resumeFiles, textAnnouncement, textResume) {
+        showLoading(true);
+        var formData = new FormData();
+        if (announcementFiles && announcementFiles.length > 0) formData.append('files_announcement', announcementFiles[0]);
+        if (resumeFiles && resumeFiles.length > 0) formData.append('files_resume', resumeFiles[0]);
+        if (textAnnouncement) formData.append('text_announcement', textAnnouncement);
+        if (textResume) formData.append('text_resume', textResume);
+
+        fetch('/api/analyze/file/', {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCsrfToken()
+          },
+          body: formData,
+          credentials: 'same-origin'
+        })
+        .then(function(res) {
+          if (res.ok) return res.json();
+          return res.text().then(function(text) {
+            var msg = res.status + ' ' + res.statusText;
+            try { var d = JSON.parse(text); if (d.error) msg = d.error; } catch(e) {}
+            throw new Error(msg);
+          });
+        })
+        .then(function(data) {
+          showLoading(false);
+          setTimeout(function() { refreshReportList(); }, 0);
+        })
+        .catch(function(err) {
+          showLoading(false);
+          alert('오류: ' + (err.message || err));
+          setTimeout(function() { refreshReportList(); }, 0);
+        });
+      }
+
+      function readFileAsText(file, callback) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          callback(e.target.result);
+        };
+        reader.onerror = function() {
+          callback(null);
+        };
+        reader.readAsText(file);
+      }
+
+      function getInfoAndPersonal(callback) {
+        var infoEl = document.querySelector('input[name="text_announcement"]');
+        var personalEl = document.querySelector('input[name="text_resume"]');
+        var info = (infoEl && infoEl.value) ? infoEl.value.trim() : '';
+        var personal = (personalEl && personalEl.value) ? personalEl.value.trim() : '';
+
+        var announcementFiles = document.getElementById('input-announcement').files;
+        var resumeFiles = document.getElementById('input-resume').files;
+
+        var pendingReads = 0;
+        var results = { info: info, personal: personal };
+
+        if (announcementFiles.length > 0) {
+          pendingReads++;
+          readFileAsText(announcementFiles[0], function(content) {
+            if (content) {
+              // 파일 내용과 텍스트 합치기
+              results.info = content + (info ? '\n' + info : '');
+            }
+            pendingReads--;
+            if (pendingReads === 0) callback(results);
+          });
+        }
+
+        if (resumeFiles.length > 0) {
+          pendingReads++;
+          readFileAsText(resumeFiles[0], function(content) {
+            if (content) {
+              // 파일 내용과 텍스트 합치기
+              results.personal = content + (personal ? '\n' + personal : '');
+            }
+            pendingReads--;
+            if (pendingReads === 0) callback(results);
+          });
+        }
+
+        if (pendingReads === 0) {
+          callback(results);
+        }
+      }
+
       var createBtn = document.getElementById('create-btn');
       if (createBtn) {
         createBtn.addEventListener('click', function() {
-          var infoEl = document.querySelector('input[name="text_announcement"]');
-          var personalEl = document.querySelector('input[name="text_resume"]');
-          var info = (infoEl && infoEl.value) ? infoEl.value.trim() : '';
-          var personal = (personalEl && personalEl.value) ? personalEl.value.trim() : '';
-
           if (!isAuthenticated) {
-            pendingCreateAfterAuth = (info && personal) ? { info: info, personal: personal } : null;
             showAuthModal();
+            pendingCreateAfterAuth = true;
             return;
           }
 
-          if (!info || !personal) {
-            showMessageModal('조건 안내문과 내 정보를 모두 입력해 주세요.');
+          var announcementFiles = document.getElementById('input-announcement').files;
+          var resumeFiles = document.getElementById('input-resume').files;
+          var textAnn = (document.querySelector('input[name="text_announcement"]') || {}).value;
+          var textRes = (document.querySelector('input[name="text_resume"]') || {}).value;
+          if (textAnn && typeof textAnn.trim === 'function') textAnn = textAnn.trim();
+          if (textRes && typeof textRes.trim === 'function') textRes = textRes.trim();
+          var hasAnn = (announcementFiles && announcementFiles.length > 0) || (textAnn && textAnn.length > 0);
+          var hasRes = (resumeFiles && resumeFiles.length > 0) || (textRes && textRes.length > 0);
+          if (!hasAnn || !hasRes) {
+            showMessageModal('조건 안내문과 내 정보를 모두 입력해 주세요. (파일 또는 텍스트)');
             return;
           }
-
-          doAnalyze(info, personal);
+          if ((announcementFiles && announcementFiles.length > 0) || (resumeFiles && resumeFiles.length > 0)) {
+            doAnalyzeFile(announcementFiles, resumeFiles, textAnn || '', textRes || '');
+          } else {
+            doAnalyze(textAnn, textRes);
+          }
         });
       }
     })();
